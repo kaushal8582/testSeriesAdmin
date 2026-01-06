@@ -63,7 +63,7 @@ export default function BulkUploadPage() {
     try {
       const response = await examApi.getExams({ limit: 100 });
       // Backend returns { exams: Exam[], pagination: {...} }
-      const examsData = response?.exams || response?.data || [];
+      const examsData = response?.exams || [];
       setExams(Array.isArray(examsData) ? examsData : []);
     } catch (error: any) {
       console.error('Failed to load exams:', error);
@@ -80,7 +80,7 @@ export default function BulkUploadPage() {
     try {
       const response = await testApi.getTests(selectedExamId, { limit: 100 });
       // Backend returns { tests: Test[], pagination: {...} }
-      const testsData = response?.tests || response?.data || [];
+      const testsData = response?.tests || [];
       setTests(Array.isArray(testsData) ? testsData : []);
     } catch (error: any) {
       console.error('Failed to load tests:', error);
@@ -120,7 +120,8 @@ export default function BulkUploadPage() {
       if (!row[key] || !row[key].trim()) {
         errors.push(`Option ${opt} is required`);
       } else {
-        question[`option${opt}` as keyof BulkQuestionData] = row[key].trim();
+        const optionKey = `option${opt}` as 'optionA' | 'optionB' | 'optionC' | 'optionD';
+        question[optionKey] = row[key].trim();
       }
     });
 

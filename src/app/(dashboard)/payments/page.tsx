@@ -71,7 +71,7 @@ export default function PaymentsPage() {
       setSelectedPayment(payment);
       setViewDialog(true);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load payment details');
+      setError(error.message || 'Failed to load payment details');
     }
   };
 

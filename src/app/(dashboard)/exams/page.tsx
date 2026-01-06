@@ -83,8 +83,7 @@ export default function ExamsPage() {
       // For admin, don't pass status filter - backend will show all exams (draft + published)
       const response = await examApi.getExams({ limit: 100 });
       // Backend returns { exams: Exam[], pagination: {...} }
-      // response.data is { exams: [...], pagination: {...} }
-      const examsData = response?.exams || response?.data || [];
+      const examsData = response?.exams || [];
       setExams(Array.isArray(examsData) ? examsData : []);
     } catch (error: any) {
       console.error('Failed to load exams:', error);

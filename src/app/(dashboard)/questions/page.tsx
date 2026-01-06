@@ -91,7 +91,7 @@ export default function QuestionsPage() {
       setLoading(true);
       const response = await examApi.getExams({ limit: 100 });
       // Backend returns { exams: Exam[], pagination: {...} }
-      const examsData = response?.exams || response?.data || [];
+      const examsData = response?.exams || [];
       setExams(Array.isArray(examsData) ? examsData : []);
     } catch (error: any) {
       console.error('Failed to load exams:', error);
@@ -111,7 +111,7 @@ export default function QuestionsPage() {
       // Use testApi.getTests instead of examApi.getExamTests for consistency
       const response = await testApi.getTests(selectedExamId, { limit: 100 });
       // Backend returns { tests: Test[], pagination: {...} }
-      const testsData = response?.tests || response?.data || [];
+      const testsData = response?.tests || [];
       const testsArray = Array.isArray(testsData) ? testsData : [];
       setTests(testsArray);
       if (testsArray.length > 0 && !selectedTestId) {
@@ -135,7 +135,7 @@ export default function QuestionsPage() {
       const response = await questionApi.getQuestions(selectedTestId, { limit: 100, includeAnswers: true });
       console.log('Questions API response:', response);
       // Backend returns { questions: Question[], pagination: {...} }
-      const questionsData = response?.questions || response?.data || [];
+      const questionsData = response?.questions || [];
       console.log('Questions data:', questionsData);
       setQuestions(Array.isArray(questionsData) ? questionsData : []);
     } catch (error: any) {

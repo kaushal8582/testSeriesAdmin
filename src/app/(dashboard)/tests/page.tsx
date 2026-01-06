@@ -77,7 +77,7 @@ export default function TestsPage() {
     try {
       const response = await examApi.getExams({ limit: 100 });
       // Backend returns { exams: Exam[], pagination: {...} }
-      const examsData = response?.exams || response?.data || [];
+      const examsData = response?.exams || [];
       const examsArray = Array.isArray(examsData) ? examsData : [];
       setExams(examsArray);
       if (examsArray.length > 0 && !selectedExamId) {
@@ -95,8 +95,8 @@ export default function TestsPage() {
     setLoading(true);
     try {
       const response = await testApi.getTests(selectedExamId, { limit: 100 });
-      // Backend returns { tests: Test[], pagination: {...} } or { data: Test[], pagination: {...} }
-      const testsData = response?.tests || response?.data || [];
+      // Backend returns { tests: Test[], pagination: {...} }
+      const testsData = response?.tests || [];
       setTests(Array.isArray(testsData) ? testsData : []);
     } catch (error: any) {
       console.error('Failed to load tests:', error);

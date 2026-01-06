@@ -20,9 +20,9 @@ export const Logo: React.FC<LogoProps> = ({
   };
 
   const fontSizeMap = {
-    small: '1rem',
-    medium: '1.5rem',
-    large: '2rem',
+    small: 16,
+    medium: 24,
+    large: 32,
   };
 
   const iconSizeMap = {
@@ -85,7 +85,7 @@ export const Logo: React.FC<LogoProps> = ({
             sx={{
               fontWeight: 700,
               letterSpacing: 1,
-              fontSize: fontSizeMap[size],
+              fontSize: `${fontSizeMap[size]}px`,
               lineHeight: 1.2,
             }}
           >
@@ -96,7 +96,7 @@ export const Logo: React.FC<LogoProps> = ({
             sx={{
               color: 'text.secondary',
               fontWeight: 500,
-              fontSize: fontSizeMap[size] * 0.4,
+              fontSize: `${fontSizeMap[size] * 0.4}px`,
               letterSpacing: 0.5,
             }}
           >

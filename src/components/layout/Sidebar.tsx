@@ -25,6 +25,7 @@ import {
   Share as ReferralIcon,
   Payment as PaymentIcon,
   Notifications as NotificationIcon,
+  EmojiEvents as ChallengeIcon,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { ROUTES } from '@/constants';
@@ -39,6 +40,7 @@ const menuItems = [
   { text: 'Exams', icon: ExamIcon, path: ROUTES.EXAMS },
   { text: 'Tests', icon: TestIcon, path: ROUTES.TESTS },
   { text: 'Questions', icon: QuestionIcon, path: ROUTES.QUESTIONS },
+  { text: 'Daily Challenges', icon: ChallengeIcon, path: ROUTES.DAILY_CHALLENGES },
   { text: 'Analytics', icon: AnalyticsIcon, path: ROUTES.ANALYTICS },
   { text: 'Users', icon: PeopleIcon, path: ROUTES.USERS },
   { text: 'Subscriptions', icon: SubscriptionIcon, path: ROUTES.SUBSCRIPTIONS },

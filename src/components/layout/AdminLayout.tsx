@@ -38,7 +38,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           </Toolbar>
         </AppBar>
         <Toolbar />
-        <Box sx={{ p: 3 }}>{children}</Box>
+        <Box >{children}</Box>
       </Box>
     </Box>
   );

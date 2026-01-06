@@ -118,7 +118,7 @@ export default function NotificationsPage() {
   const loadExams = async () => {
     try {
       const response = await examApi.getExams();
-      setExams(response.data.exams || []);
+      setExams(response.exams || []);
     } catch (error) {
       console.error('Failed to load exams:', error);
     }

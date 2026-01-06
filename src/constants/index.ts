@@ -40,6 +40,7 @@ export const ROUTES = {
   REFERRALS: '/referrals',
   PAYMENTS: '/payments',
   NOTIFICATIONS: '/notifications',
+  DAILY_CHALLENGES: '/daily-challenges',
 };
 
 // Cookie Keys
