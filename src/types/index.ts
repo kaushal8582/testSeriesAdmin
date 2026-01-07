@@ -104,6 +104,7 @@ export interface Question {
   _id: string;
   questionText: string;
   questionTextHindi?: string;
+  questionImage?: string;
   questionType: 'MCQ';
   options: {
     A: string;
@@ -116,6 +117,18 @@ export interface Question {
     B: string;
     C: string;
     D: string;
+  };
+  optionImages?: {
+    A?: string;
+    B?: string;
+    C?: string;
+    D?: string;
+  };
+  optionImagesHindi?: {
+    A?: string;
+    B?: string;
+    C?: string;
+    D?: string;
   };
   correctOption: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
@@ -136,6 +149,7 @@ export interface Question {
 export interface CreateQuestionData {
   questionText: string;
   questionTextHindi?: string;
+  questionImage?: string;
   options: {
     A: string;
     B: string;
@@ -147,6 +161,18 @@ export interface CreateQuestionData {
     B: string;
     C: string;
     D: string;
+  };
+  optionImages?: {
+    A?: string;
+    B?: string;
+    C?: string;
+    D?: string;
+  };
+  optionImagesHindi?: {
+    A?: string;
+    B?: string;
+    C?: string;
+    D?: string;
   };
   correctOption: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
@@ -160,6 +186,7 @@ export interface CreateQuestionData {
   testId: string;
   order: number;
   section?: string;
+  reuseEnglishImages?: boolean;
 }
 
 export interface BulkQuestionData {

@@ -32,10 +32,15 @@ export const questionApi = {
   /**
    * Create question
    */
-  createQuestion: async (data: CreateQuestionData): Promise<Question> => {
+  createQuestion: async (data: CreateQuestionData | FormData): Promise<Question> => {
     const response = await axiosInstance.post<ApiResponse<{ question: Question }>>(
       '/questions',
-      data
+      data,
+      {
+        headers: {
+          'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+        },
+      }
     );
     return response.data.data.question;
   },
@@ -54,10 +59,15 @@ export const questionApi = {
   /**
    * Update question
    */
-  updateQuestion: async (id: string, data: Partial<CreateQuestionData>): Promise<Question> => {
+  updateQuestion: async (id: string, data: Partial<CreateQuestionData> | FormData): Promise<Question> => {
     const response = await axiosInstance.put<ApiResponse<{ question: Question }>>(
       `/questions/${id}`,
-      data
+      data,
+      {
+        headers: {
+          'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+        },
+      }
     );
     return response.data.data.question;
   },

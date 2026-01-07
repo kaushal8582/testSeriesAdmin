@@ -24,6 +24,8 @@ import {
   Tabs,
   Tab,
   Chip,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -52,6 +54,7 @@ export default function QuestionsPage() {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateQuestionData>({
     questionText: '',
     questionTextHindi: '',
@@ -66,7 +69,30 @@ export default function QuestionsPage() {
     testId: '',
     order: 1,
     section: 'General',
+    reuseEnglishImages: false,
   });
+  const [imageFiles, setImageFiles] = useState<{
+    questionImage?: File;
+    optionImageA?: File;
+    optionImageB?: File;
+    optionImageC?: File;
+    optionImageD?: File;
+    optionImageHindiA?: File;
+    optionImageHindiB?: File;
+    optionImageHindiC?: File;
+    optionImageHindiD?: File;
+  }>({});
+  const [imagePreviews, setImagePreviews] = useState<{
+    questionImage?: string;
+    optionImageA?: string;
+    optionImageB?: string;
+    optionImageC?: string;
+    optionImageD?: string;
+    optionImageHindiA?: string;
+    optionImageHindiB?: string;
+    optionImageHindiC?: string;
+    optionImageHindiD?: string;
+  }>({});
 
   useEffect(() => {
     loadExams();
@@ -147,6 +173,24 @@ export default function QuestionsPage() {
     }
   };
 
+  const handleImageChange = (field: string, file: File | null) => {
+    if (file) {
+      setImageFiles({ ...imageFiles, [field]: file });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews({ ...imagePreviews, [field]: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const newFiles = { ...imageFiles };
+      delete newFiles[field as keyof typeof imageFiles];
+      setImageFiles(newFiles);
+      const newPreviews = { ...imagePreviews };
+      delete newPreviews[field as keyof typeof imagePreviews];
+      setImagePreviews(newPreviews);
+    }
+  };
+
   const handleOpenDialog = (question?: Question) => {
     if (!selectedTestId && !question) {
       setError('Please select a test first');
@@ -157,8 +201,11 @@ export default function QuestionsPage() {
       setFormData({
         questionText: question.questionText,
         questionTextHindi: question.questionTextHindi || '',
+        questionImage: question.questionImage,
         options: question.options,
         optionsHindi: question.optionsHindi || { A: '', B: '', C: '', D: '' },
+        optionImages: question.optionImages,
+        optionImagesHindi: question.optionImagesHindi,
         correctOption: question.correctOption,
         explanation: question.explanation || '',
         explanationHindi: question.explanationHindi || '',
@@ -168,6 +215,19 @@ export default function QuestionsPage() {
         testId: question.testId,
         order: question.order,
         section: (question as any).section || 'General',
+        reuseEnglishImages: false,
+      });
+      // Set image previews from existing URLs
+      setImagePreviews({
+        questionImage: question.questionImage,
+        optionImageA: question.optionImages?.A,
+        optionImageB: question.optionImages?.B,
+        optionImageC: question.optionImages?.C,
+        optionImageD: question.optionImages?.D,
+        optionImageHindiA: question.optionImagesHindi?.A,
+        optionImageHindiB: question.optionImagesHindi?.B,
+        optionImageHindiC: question.optionImagesHindi?.C,
+        optionImageHindiD: question.optionImagesHindi?.D,
       });
     } else {
       setEditingQuestion(null);
@@ -185,8 +245,11 @@ export default function QuestionsPage() {
         testId: selectedTestId,
         order: (questions && Array.isArray(questions) ? questions.length : 0) + 1,
         section: 'General',
+        reuseEnglishImages: false,
       });
+      setImagePreviews({});
     }
+    setImageFiles({});
     setOpenDialog(true);
     setError('');
   };
@@ -195,24 +258,50 @@ export default function QuestionsPage() {
     setOpenDialog(false);
     setEditingQuestion(null);
     setError('');
+    setImageFiles({});
+    setImagePreviews({});
   };
 
   const handleSubmit = async () => {
     try {
       setError('');
+      setSubmitting(true);
       // Validate required fields
       if (!formData.questionText.trim()) {
         setError('Question text is required');
+        setSubmitting(false);
         return;
       }
       if (!formData.testId) {
         setError('Please select a test');
+        setSubmitting(false);
         return;
       }
-      if (!formData.options.A.trim() || !formData.options.B.trim() || 
-          !formData.options.C.trim() || !formData.options.D.trim()) {
-        setError('All four options (A, B, C, D) are required');
+      // Check if options have text OR images
+      const hasOptionText = formData.options.A.trim() || formData.options.B.trim() || 
+          formData.options.C.trim() || formData.options.D.trim();
+      const hasOptionImages = imageFiles.optionImageA || imageFiles.optionImageB || 
+          imageFiles.optionImageC || imageFiles.optionImageD || 
+          imagePreviews.optionImageA || imagePreviews.optionImageB || 
+          imagePreviews.optionImageC || imagePreviews.optionImageD;
+      
+      if (!hasOptionText && !hasOptionImages) {
+        setError('At least one option must have text or image');
+        setSubmitting(false);
         return;
+      }
+      
+      // Validate each option has either text or image
+      const optionKeys: Array<'A' | 'B' | 'C' | 'D'> = ['A', 'B', 'C', 'D'];
+      for (const key of optionKeys) {
+        const hasText = formData.options[key]?.trim();
+        const hasImage = imageFiles[`optionImage${key}` as keyof typeof imageFiles] || 
+                        imagePreviews[`optionImage${key}` as keyof typeof imagePreviews];
+        if (!hasText && !hasImage) {
+          setError(`Option ${key} must have either text or image`);
+          setSubmitting(false);
+          return;
+        }
       }
       if (!formData.correctOption || !['A', 'B', 'C', 'D'].includes(formData.correctOption)) {
         setError('Please select a correct option');
@@ -227,12 +316,67 @@ export default function QuestionsPage() {
         return;
       }
       
-      if (editingQuestion) {
-        await questionApi.updateQuestion(editingQuestion._id, formData);
+      // Check if we have any image files to upload
+      const hasImageFiles = Object.keys(imageFiles).length > 0;
+      
+      if (hasImageFiles) {
+        // Use FormData for file uploads
+        const formDataToSend = new FormData();
+        
+        // Add all text fields
+        formDataToSend.append('questionText', formData.questionText);
+        if (formData.questionTextHindi) formDataToSend.append('questionTextHindi', formData.questionTextHindi);
+        formDataToSend.append('options[A]', formData.options.A);
+        formDataToSend.append('options[B]', formData.options.B);
+        formDataToSend.append('options[C]', formData.options.C);
+        formDataToSend.append('options[D]', formData.options.D);
+        if (formData.optionsHindi) {
+          formDataToSend.append('optionsHindi[A]', formData.optionsHindi.A || '');
+          formDataToSend.append('optionsHindi[B]', formData.optionsHindi.B || '');
+          formDataToSend.append('optionsHindi[C]', formData.optionsHindi.C || '');
+          formDataToSend.append('optionsHindi[D]', formData.optionsHindi.D || '');
+        }
+        formDataToSend.append('correctOption', formData.correctOption);
+        if (formData.explanation) formDataToSend.append('explanation', formData.explanation);
+        if (formData.explanationHindi) formDataToSend.append('explanationHindi', formData.explanationHindi);
+        if (formData.solution?.english) formDataToSend.append('solution[english]', formData.solution.english);
+        if (formData.solution?.hindi) formDataToSend.append('solution[hindi]', formData.solution.hindi);
+        formDataToSend.append('marks', formData.marks.toString());
+        formDataToSend.append('negativeMarks', formData.negativeMarks.toString());
+        formDataToSend.append('testId', formData.testId);
+        formDataToSend.append('order', formData.order.toString());
+        if (formData.section) formDataToSend.append('section', formData.section);
+        formDataToSend.append('reuseEnglishImages', (formData.reuseEnglishImages || false).toString());
+        
+        // Add image files
+        if (imageFiles.questionImage) formDataToSend.append('questionImage', imageFiles.questionImage);
+        if (imageFiles.optionImageA) formDataToSend.append('optionImageA', imageFiles.optionImageA);
+        if (imageFiles.optionImageB) formDataToSend.append('optionImageB', imageFiles.optionImageB);
+        if (imageFiles.optionImageC) formDataToSend.append('optionImageC', imageFiles.optionImageC);
+        if (imageFiles.optionImageD) formDataToSend.append('optionImageD', imageFiles.optionImageD);
+        if (!formData.reuseEnglishImages) {
+          if (imageFiles.optionImageHindiA) formDataToSend.append('optionImageHindiA', imageFiles.optionImageHindiA);
+          if (imageFiles.optionImageHindiB) formDataToSend.append('optionImageHindiB', imageFiles.optionImageHindiB);
+          if (imageFiles.optionImageHindiC) formDataToSend.append('optionImageHindiC', imageFiles.optionImageHindiC);
+          if (imageFiles.optionImageHindiD) formDataToSend.append('optionImageHindiD', imageFiles.optionImageHindiD);
+        }
+        
+        if (editingQuestion) {
+          await questionApi.updateQuestion(editingQuestion._id, formDataToSend);
+        } else {
+          const created = await questionApi.createQuestion(formDataToSend);
+          console.log('Question created successfully:', created);
+        }
       } else {
-        const created = await questionApi.createQuestion(formData);
-        console.log('Question created successfully:', created);
+        // No image files, send as JSON
+        if (editingQuestion) {
+          await questionApi.updateQuestion(editingQuestion._id, formData);
+        } else {
+          const created = await questionApi.createQuestion(formData);
+          console.log('Question created successfully:', created);
+        }
       }
+      
       handleCloseDialog();
       // Wait a bit before reloading to ensure backend has processed
       setTimeout(() => {
@@ -242,16 +386,21 @@ export default function QuestionsPage() {
     } catch (error: any) {
       console.error('Error saving question:', error);
       setError(error.message || 'Failed to save question');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
+      setSubmitting(true);
       await questionApi.deleteQuestion(id);
       setDeleteConfirm(null);
       loadQuestions();
     } catch (error: any) {
       setError(error.message || 'Failed to delete question');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -567,6 +716,42 @@ export default function QuestionsPage() {
               multiline
               rows={3}
             />
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                Question Image (Optional)
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="question-image-upload"
+                type="file"
+                onChange={(e) => handleImageChange('questionImage', e.target.files?.[0] || null)}
+              />
+              <label htmlFor="question-image-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Question Image
+                </Button>
+              </label>
+              {imagePreviews.questionImage && (
+                <Box sx={{ mt: 1 }}>
+                  <img
+                    src={imagePreviews.questionImage}
+                    alt="Question preview"
+                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('questionImage', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            <Box>
             <TextField
               label="Option A"
               value={formData.options.A}
@@ -577,8 +762,42 @@ export default function QuestionsPage() {
                 })
               }
               fullWidth
-              required
+              required={!imageFiles.optionImageA && !imagePreviews.optionImageA}
+              sx={{ mb: 1 }}
+              helperText={imageFiles.optionImageA || imagePreviews.optionImageA ? "Text is optional when image is uploaded" : ""}
             />
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="option-image-a-upload"
+                type="file"
+                onChange={(e) => handleImageChange('optionImageA', e.target.files?.[0] || null)}
+              />
+              <label htmlFor="option-image-a-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Image for Option A
+                </Button>
+              </label>
+              {imagePreviews.optionImageA && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                  <img
+                    src={imagePreviews.optionImageA}
+                    alt="Option A preview"
+                    style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('optionImageA', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            <Box>
             <TextField
               label="Option B"
               value={formData.options.B}
@@ -589,8 +808,42 @@ export default function QuestionsPage() {
                 })
               }
               fullWidth
-              required
+              required={!imageFiles.optionImageB && !imagePreviews.optionImageB}
+              sx={{ mb: 1 }}
+              helperText={imageFiles.optionImageB || imagePreviews.optionImageB ? "Text is optional when image is uploaded" : ""}
             />
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="option-image-b-upload"
+                type="file"
+                onChange={(e) => handleImageChange('optionImageB', e.target.files?.[0] || null)}
+              />
+              <label htmlFor="option-image-b-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Image for Option B
+                </Button>
+              </label>
+              {imagePreviews.optionImageB && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                  <img
+                    src={imagePreviews.optionImageB}
+                    alt="Option B preview"
+                    style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('optionImageB', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            <Box>
             <TextField
               label="Option C"
               value={formData.options.C}
@@ -601,8 +854,42 @@ export default function QuestionsPage() {
                 })
               }
               fullWidth
-              required
+              required={!imageFiles.optionImageC && !imagePreviews.optionImageC}
+              sx={{ mb: 1 }}
+              helperText={imageFiles.optionImageC || imagePreviews.optionImageC ? "Text is optional when image is uploaded" : ""}
             />
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="option-image-c-upload"
+                type="file"
+                onChange={(e) => handleImageChange('optionImageC', e.target.files?.[0] || null)}
+              />
+              <label htmlFor="option-image-c-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Image for Option C
+                </Button>
+              </label>
+              {imagePreviews.optionImageC && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                  <img
+                    src={imagePreviews.optionImageC}
+                    alt="Option C preview"
+                    style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('optionImageC', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            <Box>
             <TextField
               label="Option D"
               value={formData.options.D}
@@ -613,8 +900,41 @@ export default function QuestionsPage() {
                 })
               }
               fullWidth
-              required
+              required={!imageFiles.optionImageD && !imagePreviews.optionImageD}
+              sx={{ mb: 1 }}
+              helperText={imageFiles.optionImageD || imagePreviews.optionImageD ? "Text is optional when image is uploaded" : ""}
             />
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="option-image-d-upload"
+                type="file"
+                onChange={(e) => handleImageChange('optionImageD', e.target.files?.[0] || null)}
+              />
+              <label htmlFor="option-image-d-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Image for Option D
+                </Button>
+              </label>
+              {imagePreviews.optionImageD && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                  <img
+                    src={imagePreviews.optionImageD}
+                    alt="Option D preview"
+                    style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('optionImageD', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
             <TextField
               select
               label="Correct Option"
@@ -684,50 +1004,213 @@ export default function QuestionsPage() {
               multiline
               rows={3}
             />
-            <TextField
-              label="Option A (Hindi)"
-              value={formData.optionsHindi?.A || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), A: e.target.value },
-                })
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.reuseEnglishImages || false}
+                  onChange={(e) =>
+                    setFormData({ ...formData, reuseEnglishImages: e.target.checked })
+                  }
+                />
               }
-              fullWidth
+              label="Use same images as English options for Hindi options"
             />
-            <TextField
-              label="Option B (Hindi)"
-              value={formData.optionsHindi?.B || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), B: e.target.value },
-                })
-              }
-              fullWidth
-            />
-            <TextField
-              label="Option C (Hindi)"
-              value={formData.optionsHindi?.C || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), C: e.target.value },
-                })
-              }
-              fullWidth
-            />
-            <TextField
-              label="Option D (Hindi)"
-              value={formData.optionsHindi?.D || ''}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), D: e.target.value },
-                })
-              }
-              fullWidth
-            />
+            <Box>
+              <TextField
+                label="Option A (Hindi)"
+                value={formData.optionsHindi?.A || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), A: e.target.value },
+                  })
+                }
+                fullWidth
+                sx={{ mb: 1 }}
+                disabled={formData.reuseEnglishImages}
+              />
+              {!formData.reuseEnglishImages && (
+                <>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="option-image-hindi-a-upload"
+                    type="file"
+                    onChange={(e) => handleImageChange('optionImageHindiA', e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="option-image-hindi-a-upload">
+                    <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                      <UploadIcon sx={{ mr: 1 }} />
+                      Upload Image for Option A (Hindi)
+                    </Button>
+                  </label>
+                  {imagePreviews.optionImageHindiA && (
+                    <Box sx={{ mt: 1, mb: 2 }}>
+                      <img
+                        src={imagePreviews.optionImageHindiA}
+                        alt="Option A Hindi preview"
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                      />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleImageChange('optionImageHindiA', null)}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+            <Box>
+              <TextField
+                label="Option B (Hindi)"
+                value={formData.optionsHindi?.B || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), B: e.target.value },
+                  })
+                }
+                fullWidth
+                sx={{ mb: 1 }}
+                disabled={formData.reuseEnglishImages}
+              />
+              {!formData.reuseEnglishImages && (
+                <>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="option-image-hindi-b-upload"
+                    type="file"
+                    onChange={(e) => handleImageChange('optionImageHindiB', e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="option-image-hindi-b-upload">
+                    <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                      <UploadIcon sx={{ mr: 1 }} />
+                      Upload Image for Option B (Hindi)
+                    </Button>
+                  </label>
+                  {imagePreviews.optionImageHindiB && (
+                    <Box sx={{ mt: 1, mb: 2 }}>
+                      <img
+                        src={imagePreviews.optionImageHindiB}
+                        alt="Option B Hindi preview"
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                      />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleImageChange('optionImageHindiB', null)}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+            <Box>
+              <TextField
+                label="Option C (Hindi)"
+                value={formData.optionsHindi?.C || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), C: e.target.value },
+                  })
+                }
+                fullWidth
+                sx={{ mb: 1 }}
+                disabled={formData.reuseEnglishImages}
+              />
+              {!formData.reuseEnglishImages && (
+                <>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="option-image-hindi-c-upload"
+                    type="file"
+                    onChange={(e) => handleImageChange('optionImageHindiC', e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="option-image-hindi-c-upload">
+                    <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                      <UploadIcon sx={{ mr: 1 }} />
+                      Upload Image for Option C (Hindi)
+                    </Button>
+                  </label>
+                  {imagePreviews.optionImageHindiC && (
+                    <Box sx={{ mt: 1, mb: 2 }}>
+                      <img
+                        src={imagePreviews.optionImageHindiC}
+                        alt="Option C Hindi preview"
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                      />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleImageChange('optionImageHindiC', null)}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+            <Box>
+              <TextField
+                label="Option D (Hindi)"
+                value={formData.optionsHindi?.D || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    optionsHindi: { ...(formData.optionsHindi || { A: '', B: '', C: '', D: '' }), D: e.target.value },
+                  })
+                }
+                fullWidth
+                sx={{ mb: 1 }}
+                disabled={formData.reuseEnglishImages}
+              />
+              {!formData.reuseEnglishImages && (
+                <>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="option-image-hindi-d-upload"
+                    type="file"
+                    onChange={(e) => handleImageChange('optionImageHindiD', e.target.files?.[0] || null)}
+                  />
+                  <label htmlFor="option-image-hindi-d-upload">
+                    <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                      <UploadIcon sx={{ mr: 1 }} />
+                      Upload Image for Option D (Hindi)
+                    </Button>
+                  </label>
+                  {imagePreviews.optionImageHindiD && (
+                    <Box sx={{ mt: 1, mb: 2 }}>
+                      <img
+                        src={imagePreviews.optionImageHindiD}
+                        alt="Option D Hindi preview"
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
+                      />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleImageChange('optionImageHindiD', null)}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
             <TextField
               label="Explanation (Hindi)"
               value={formData.explanationHindi || ''}
@@ -780,13 +1263,21 @@ export default function QuestionsPage() {
           <Button 
             onClick={handleSubmit} 
             variant="contained"
+            disabled={submitting}
             sx={{ 
               textTransform: 'none', 
               px: 3,
               fontWeight: 600,
             }}
           >
-            {editingQuestion ? 'Update Question' : 'Create Question'}
+            {submitting ? (
+              <>
+                <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
+                {editingQuestion ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              editingQuestion ? 'Update Question' : 'Create Question'
+            )}
           </Button>
         </DialogActions>
       </Dialog>
