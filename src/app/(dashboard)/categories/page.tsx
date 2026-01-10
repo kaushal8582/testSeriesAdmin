@@ -30,6 +30,7 @@ import {
   CloudUpload as CloudUploadIcon,
   Image as ImageIcon,
 } from '@mui/icons-material';
+import { FormControlLabel, Switch } from '@mui/material';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { categoryApi, Category, CreateCategoryData } from '@/api/category.api';
 
@@ -40,12 +41,13 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState<CreateCategoryData>({
+  const [formData, setFormData] = useState<CreateCategoryData & { isActive?: boolean }>({
     name: '',
     description: '',
     icon: '',
     color: '#4A90E2',
     order: 0,
+    isActive: true,
   });
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
@@ -77,6 +79,7 @@ export default function CategoriesPage() {
         icon: category.icon || '',
         color: category.color || '#4A90E2',
         order: category.order || 0,
+        isActive: category.isActive !== undefined ? category.isActive : true,
       });
       setIconPreview(category.icon || null);
       setIconFile(null);
@@ -88,6 +91,7 @@ export default function CategoriesPage() {
         icon: '',
         color: '#4A90E2',
         order: categories.length,
+        isActive: true,
       });
       setIconPreview(null);
       setIconFile(null);
@@ -132,6 +136,7 @@ export default function CategoriesPage() {
         formDataToSend.append('description', formData.description || '');
         formDataToSend.append('color', formData.color || '#4A90E2');
         formDataToSend.append('order', String(formData.order || 0));
+        formDataToSend.append('isActive', String(formData.isActive !== undefined ? formData.isActive : true));
         formDataToSend.append('icon', iconFile);
 
         if (editingCategory) {
@@ -141,10 +146,14 @@ export default function CategoriesPage() {
         }
       } else {
         // No file, use regular JSON
+        const dataToSend = {
+          ...formData,
+          isActive: formData.isActive !== undefined ? formData.isActive : true,
+        };
         if (editingCategory) {
-          await categoryApi.updateCategory(editingCategory._id, formData);
+          await categoryApi.updateCategory(editingCategory._id, dataToSend);
         } else {
-          await categoryApi.createCategory(formData);
+          await categoryApi.createCategory(dataToSend);
         }
       }
       handleCloseDialog();
@@ -415,6 +424,20 @@ export default function CategoriesPage() {
                 fullWidth
                 inputProps={{ min: 0 }}
               />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isActive !== undefined ? formData.isActive : true}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    color="primary"
+                  />
+                }
+                label="Active Status"
+                sx={{ mt: 1 }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1, mb: 1 }}>
+                {formData.isActive ? 'Category will be visible to users' : 'Category will be hidden from users'}
+              </Typography>
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>

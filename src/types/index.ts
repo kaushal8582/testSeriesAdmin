@@ -74,6 +74,7 @@ export interface Test {
   totalMarks: number;
   duration: number;
   isFree: boolean;
+  isActive?: boolean;
   order: number;
   description?: string;
   instructions?: string;
@@ -94,6 +95,7 @@ export interface CreateTestData {
   totalMarks: number;
   duration: number;
   isFree: boolean;
+  isActive?: boolean;
   order: number;
   description?: string;
   instructions?: string;

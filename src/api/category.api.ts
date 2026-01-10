@@ -20,6 +20,7 @@ export interface CreateCategoryData {
   icon?: string;
   color?: string;
   order?: number;
+  isActive?: boolean;
 }
 
 export const categoryApi = {

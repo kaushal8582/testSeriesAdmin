@@ -61,9 +61,10 @@ export const Sidebar: React.FC = () => {
 
   return (
     <Drawer
+    
       variant="permanent"
       sx={{
-        width: drawerWidth,
+        width: 140,
         flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: drawerWidth,

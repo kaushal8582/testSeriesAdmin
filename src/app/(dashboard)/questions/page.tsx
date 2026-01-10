@@ -70,6 +70,7 @@ export default function QuestionsPage() {
     order: 1,
     section: 'General',
     reuseEnglishImages: false,
+    reuseEnglishResultImages: false,
   });
   const [imageFiles, setImageFiles] = useState<{
     questionImage?: File;
@@ -81,6 +82,10 @@ export default function QuestionsPage() {
     optionImageHindiB?: File;
     optionImageHindiC?: File;
     optionImageHindiD?: File;
+    explanationImageEnglish?: File;
+    explanationImageHindi?: File;
+    solutionImageEnglish?: File;
+    solutionImageHindi?: File;
   }>({});
   const [imagePreviews, setImagePreviews] = useState<{
     questionImage?: string;
@@ -92,6 +97,10 @@ export default function QuestionsPage() {
     optionImageHindiB?: string;
     optionImageHindiC?: string;
     optionImageHindiD?: string;
+    explanationImageEnglish?: string;
+    explanationImageHindi?: string;
+    solutionImageEnglish?: string;
+    solutionImageHindi?: string;
   }>({});
 
   useEffect(() => {
@@ -191,43 +200,92 @@ export default function QuestionsPage() {
     }
   };
 
-  const handleOpenDialog = (question?: Question) => {
+  const handleOpenDialog = async (question?: Question) => {
     if (!selectedTestId && !question) {
       setError('Please select a test first');
       return;
     }
     if (question) {
-      setEditingQuestion(question);
+      // Fetch the full question data by ID to ensure all fields (including Hindi) are present
+      let questionToUse = question;
+      try {
+        setLoading(true);
+        const fullQuestion = await questionApi.getQuestionById(question._id);
+        console.log('Fetched full question:', fullQuestion);
+        questionToUse = fullQuestion;
+        setEditingQuestion(fullQuestion);
+      } catch (error: any) {
+        console.error('Error fetching question details:', error);
+        setError('Failed to load question details. Using cached data.');
+        // Fallback to the question from list
+        setEditingQuestion(question);
+      } finally {
+        setLoading(false);
+      }
+      
+      // Safely extract optionsHindi - handle both object format and potential null/undefined
+      let optionsHindiValue = { A: '', B: '', C: '', D: '' };
+      if (questionToUse.optionsHindi && typeof questionToUse.optionsHindi === 'object') {
+        optionsHindiValue = {
+          A: questionToUse.optionsHindi.A || '',
+          B: questionToUse.optionsHindi.B || '',
+          C: questionToUse.optionsHindi.C || '',
+          D: questionToUse.optionsHindi.D || '',
+        };
+      }
+      console.log('Question Hindi options:', questionToUse.optionsHindi);
+      console.log('Question Hindi text:', questionToUse.questionTextHindi);
+      console.log('Extracted optionsHindiValue:', optionsHindiValue);
+      
+      // Safely extract solution
+      let solutionValue = { english: '', hindi: '' };
+      if (questionToUse.solution) {
+        if (typeof questionToUse.solution === 'object' && 'english' in questionToUse.solution) {
+          solutionValue = {
+            english: questionToUse.solution.english || '',
+            hindi: questionToUse.solution.hindi || '',
+          };
+        } else if (typeof questionToUse.solution === 'string') {
+          // If solution is a string (from old format), put it in english
+          solutionValue = { english: questionToUse.solution, hindi: '' };
+        }
+      }
+      
       setFormData({
-        questionText: question.questionText,
-        questionTextHindi: question.questionTextHindi || '',
-        questionImage: question.questionImage,
-        options: question.options,
-        optionsHindi: question.optionsHindi || { A: '', B: '', C: '', D: '' },
-        optionImages: question.optionImages,
-        optionImagesHindi: question.optionImagesHindi,
-        correctOption: question.correctOption,
-        explanation: question.explanation || '',
-        explanationHindi: question.explanationHindi || '',
-        solution: question.solution || { english: '', hindi: '' },
-        marks: question.marks,
-        negativeMarks: question.negativeMarks,
-        testId: question.testId,
-        order: question.order,
-        section: (question as any).section || 'General',
+        questionText: questionToUse.questionText || '',
+        questionTextHindi: questionToUse.questionTextHindi || '',
+        questionImage: questionToUse.questionImage || '',
+        options: questionToUse.options || { A: '', B: '', C: '', D: '' },
+        optionsHindi: optionsHindiValue,
+        optionImages: questionToUse.optionImages || {},
+        optionImagesHindi: questionToUse.optionImagesHindi || {},
+        correctOption: questionToUse.correctOption || 'A',
+        explanation: questionToUse.explanation || '',
+        explanationHindi: questionToUse.explanationHindi || '',
+        solution: solutionValue,
+        marks: questionToUse.marks || 1,
+        negativeMarks: questionToUse.negativeMarks || 0,
+        testId: typeof questionToUse.testId === 'object' ? questionToUse.testId._id : questionToUse.testId,
+        order: questionToUse.order || 1,
+        section: (questionToUse as any).section || 'General',
         reuseEnglishImages: false,
+        reuseEnglishResultImages: false,
       });
       // Set image previews from existing URLs
       setImagePreviews({
-        questionImage: question.questionImage,
-        optionImageA: question.optionImages?.A,
-        optionImageB: question.optionImages?.B,
-        optionImageC: question.optionImages?.C,
-        optionImageD: question.optionImages?.D,
-        optionImageHindiA: question.optionImagesHindi?.A,
-        optionImageHindiB: question.optionImagesHindi?.B,
-        optionImageHindiC: question.optionImagesHindi?.C,
-        optionImageHindiD: question.optionImagesHindi?.D,
+        questionImage: questionToUse.questionImage,
+        optionImageA: questionToUse.optionImages?.A,
+        optionImageB: questionToUse.optionImages?.B,
+        optionImageC: questionToUse.optionImages?.C,
+        optionImageD: questionToUse.optionImages?.D,
+        optionImageHindiA: questionToUse.optionImagesHindi?.A,
+        optionImageHindiB: questionToUse.optionImagesHindi?.B,
+        optionImageHindiC: questionToUse.optionImagesHindi?.C,
+        optionImageHindiD: questionToUse.optionImagesHindi?.D,
+        explanationImageEnglish: (questionToUse as any).explanationImageEnglish,
+        explanationImageHindi: (questionToUse as any).explanationImageHindi,
+        solutionImageEnglish: (questionToUse as any).solutionImageEnglish,
+        solutionImageHindi: (questionToUse as any).solutionImageHindi,
       });
     } else {
       setEditingQuestion(null);
@@ -246,6 +304,7 @@ export default function QuestionsPage() {
         order: (questions && Array.isArray(questions) ? questions.length : 0) + 1,
         section: 'General',
         reuseEnglishImages: false,
+        reuseEnglishResultImages: false,
       });
       setImagePreviews({});
     }
@@ -347,6 +406,7 @@ export default function QuestionsPage() {
         formDataToSend.append('order', formData.order.toString());
         if (formData.section) formDataToSend.append('section', formData.section);
         formDataToSend.append('reuseEnglishImages', (formData.reuseEnglishImages || false).toString());
+        formDataToSend.append('reuseEnglishResultImages', (formData.reuseEnglishResultImages || false).toString());
         
         // Add image files
         if (imageFiles.questionImage) formDataToSend.append('questionImage', imageFiles.questionImage);
@@ -359,6 +419,20 @@ export default function QuestionsPage() {
           if (imageFiles.optionImageHindiB) formDataToSend.append('optionImageHindiB', imageFiles.optionImageHindiB);
           if (imageFiles.optionImageHindiC) formDataToSend.append('optionImageHindiC', imageFiles.optionImageHindiC);
           if (imageFiles.optionImageHindiD) formDataToSend.append('optionImageHindiD', imageFiles.optionImageHindiD);
+        }
+        // Add explanation and solution images
+        if (imageFiles.explanationImageEnglish) formDataToSend.append('explanationImageEnglish', imageFiles.explanationImageEnglish);
+        if (imageFiles.solutionImageEnglish) formDataToSend.append('solutionImageEnglish', imageFiles.solutionImageEnglish);
+        
+        // If reuseEnglishResultImages is checked, use English images for Hindi too
+        if (formData.reuseEnglishResultImages) {
+          // Use English images for Hindi when checkbox is checked
+          if (imageFiles.explanationImageEnglish) formDataToSend.append('explanationImageHindi', imageFiles.explanationImageEnglish);
+          if (imageFiles.solutionImageEnglish) formDataToSend.append('solutionImageHindi', imageFiles.solutionImageEnglish);
+        } else {
+          // Use separate Hindi images when checkbox is unchecked
+          if (imageFiles.explanationImageHindi) formDataToSend.append('explanationImageHindi', imageFiles.explanationImageHindi);
+          if (imageFiles.solutionImageHindi) formDataToSend.append('solutionImageHindi', imageFiles.solutionImageHindi);
         }
         
         if (editingQuestion) {
@@ -992,6 +1066,54 @@ export default function QuestionsPage() {
               multiline
               rows={3}
             />
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                Explanation Image (English) - Optional
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="explanation-image-english-upload"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  handleImageChange('explanationImageEnglish', file);
+                  // If reuseEnglishResultImages is checked, also set Hindi preview to same image
+                  if (formData.reuseEnglishResultImages && file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setImagePreviews({ ...imagePreviews, explanationImageEnglish: reader.result as string, explanationImageHindi: reader.result as string });
+                    };
+                    reader.readAsDataURL(file);
+                    // Also copy the file
+                    setImageFiles({ ...imageFiles, explanationImageEnglish: file, explanationImageHindi: file });
+                  }
+                }}
+              />
+              <label htmlFor="explanation-image-english-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Explanation Image (English)
+                </Button>
+              </label>
+              {imagePreviews.explanationImageEnglish && (
+                <Box sx={{ mt: 1 }}>
+                  <img
+                    src={imagePreviews.explanationImageEnglish}
+                    alt="Explanation preview"
+                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleImageChange('explanationImageEnglish', null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
             
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 2 }}>
               Hindi Content (Optional)
@@ -1218,10 +1340,85 @@ export default function QuestionsPage() {
               fullWidth
               multiline
               rows={3}
+              disabled={formData.reuseEnglishResultImages}
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.reuseEnglishResultImages || false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({ ...formData, reuseEnglishResultImages: checked });
+                    // If checked, copy English solution image to Hindi preview and files
+                    if (checked) {
+                      if (imagePreviews.solutionImageEnglish) {
+                        setImagePreviews({ ...imagePreviews, solutionImageHindi: imagePreviews.solutionImageEnglish });
+                      }
+                      if (imageFiles.solutionImageEnglish) {
+                        setImageFiles({ ...imageFiles, solutionImageHindi: imageFiles.solutionImageEnglish });
+                      }
+                      if (imagePreviews.explanationImageEnglish) {
+                        setImagePreviews({ ...imagePreviews, explanationImageHindi: imagePreviews.explanationImageEnglish });
+                      }
+                      if (imageFiles.explanationImageEnglish) {
+                        setImageFiles({ ...imageFiles, explanationImageHindi: imageFiles.explanationImageEnglish });
+                      }
+                    } else {
+                      // If unchecked, clear Hindi images
+                      const newPreviews = { ...imagePreviews };
+                      delete newPreviews.solutionImageHindi;
+                      delete newPreviews.explanationImageHindi;
+                      setImagePreviews(newPreviews);
+                      const newFiles = { ...imageFiles };
+                      delete newFiles.solutionImageHindi;
+                      delete newFiles.explanationImageHindi;
+                      setImageFiles(newFiles);
+                    }
+                  }}
+                />
+              }
+              label="Use same explanation and solution/result images for Hindi as English"
+            />
+            {!formData.reuseEnglishResultImages && (
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                  Explanation Image (Hindi) - Optional
+                </Typography>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="explanation-image-hindi-upload"
+                  type="file"
+                  onChange={(e) => handleImageChange('explanationImageHindi', e.target.files?.[0] || null)}
+                />
+                <label htmlFor="explanation-image-hindi-upload">
+                  <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                    <UploadIcon sx={{ mr: 1 }} />
+                    Upload Explanation Image (Hindi)
+                  </Button>
+                </label>
+                {imagePreviews.explanationImageHindi && (
+                  <Box sx={{ mt: 1 }}>
+                    <img
+                      src={imagePreviews.explanationImageHindi}
+                      alt="Explanation Hindi preview"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleImageChange('explanationImageHindi', null)}
+                      sx={{ mt: 1 }}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
             
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 2 }}>
-              Solution (Detailed Explanation)
+              Solution (Detailed Explanation / Result)
             </Typography>
             <TextField
               label="Solution (English)"
@@ -1235,8 +1432,59 @@ export default function QuestionsPage() {
               fullWidth
               multiline
               rows={4}
-              helperText="Detailed solution explaining why the answer is correct"
+              helperText="Detailed solution/result explaining why the answer is correct"
             />
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                Solution/Result Image (English) - Optional
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="solution-image-english-upload"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  handleImageChange('solutionImageEnglish', file);
+                  // If reuseEnglishResultImages is checked, also set Hindi preview to same image
+                  if (formData.reuseEnglishResultImages && file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setImagePreviews({ ...imagePreviews, solutionImageEnglish: reader.result as string, solutionImageHindi: reader.result as string });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <label htmlFor="solution-image-english-upload">
+                <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                  <UploadIcon sx={{ mr: 1 }} />
+                  Upload Solution/Result Image (English)
+                </Button>
+              </label>
+              {imagePreviews.solutionImageEnglish && (
+                <Box sx={{ mt: 1 }}>
+                  <img
+                    src={imagePreviews.solutionImageEnglish}
+                    alt="Solution preview"
+                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      handleImageChange('solutionImageEnglish', null);
+                      if (formData.reuseEnglishResultImages) {
+                        handleImageChange('solutionImageHindi', null);
+                      }
+                    }}
+                    sx={{ mt: 1 }}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              )}
+            </Box>
             <TextField
               label="Solution (Hindi)"
               value={formData.solution?.hindi || ''}
@@ -1249,8 +1497,60 @@ export default function QuestionsPage() {
               fullWidth
               multiline
               rows={4}
-              helperText="Detailed solution in Hindi"
+              helperText="Detailed solution/result in Hindi"
+              disabled={formData.reuseEnglishResultImages}
             />
+            {!formData.reuseEnglishResultImages && (
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                  Solution/Result Image (Hindi) - Optional
+                </Typography>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="solution-image-hindi-upload"
+                  type="file"
+                  onChange={(e) => handleImageChange('solutionImageHindi', e.target.files?.[0] || null)}
+                />
+                <label htmlFor="solution-image-hindi-upload">
+                  <Button variant="outlined" component="span" size="small" sx={{ mb: 1 }}>
+                    <UploadIcon sx={{ mr: 1 }} />
+                    Upload Solution/Result Image (Hindi)
+                  </Button>
+                </label>
+                {imagePreviews.solutionImageHindi && (
+                  <Box sx={{ mt: 1 }}>
+                    <img
+                      src={imagePreviews.solutionImageHindi}
+                      alt="Solution Hindi preview"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleImageChange('solutionImageHindi', null)}
+                      sx={{ mt: 1 }}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
+            {formData.reuseEnglishResultImages && imagePreviews.solutionImageEnglish && (
+              <Box sx={{ mt: 1, p: 1, bgcolor: 'info.light', borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  ✓ Using same Solution/Result image for Hindi as English
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <img
+                    src={imagePreviews.solutionImageEnglish}
+                    alt="Solution preview (used for both languages)"
+                    style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                  />
+                </Box>
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>

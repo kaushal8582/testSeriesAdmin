@@ -7,7 +7,7 @@ export const testApi = {
    */
   getTests: async (
     examId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; limit?: number; tabId?: string; includeInactive?: boolean }
   ): Promise<{ tests: Test[]; pagination: any }> => {
     const response = await axiosInstance.get<ApiResponse<{ tests: Test[]; pagination: any }>>('/tests', {
       params: { examId, ...params },

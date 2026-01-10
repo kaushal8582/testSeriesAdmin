@@ -38,6 +38,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           </Toolbar>
         </AppBar>
         <Toolbar />
+        {/* <div className='bg-red-500 w-500 h-40'></div> */}
         <Box >{children}</Box>
       </Box>
     </Box>

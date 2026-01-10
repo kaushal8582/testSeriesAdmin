@@ -54,6 +54,7 @@ export default function TestsPage() {
     totalMarks: 0,
     duration: 0,
     isFree: false,
+    isActive: true,
     order: 1,
     description: '',
     instructions: '',
@@ -94,7 +95,8 @@ export default function TestsPage() {
     if (!selectedExamId) return;
     setLoading(true);
     try {
-      const response = await testApi.getTests(selectedExamId, { limit: 100 });
+      // Include inactive tests for admin panel so they can see and edit all tests
+      const response = await testApi.getTests(selectedExamId, { limit: 100, includeInactive: true });
       // Backend returns { tests: Test[], pagination: {...} }
       const testsData = response?.tests || [];
       setTests(Array.isArray(testsData) ? testsData : []);
@@ -129,6 +131,7 @@ export default function TestsPage() {
         totalMarks: test.totalMarks,
         duration: test.duration,
         isFree: test.isFree,
+        isActive: test.isActive !== undefined ? test.isActive : true,
         order: test.order,
         description: test.description || '',
         instructions: test.instructions || '',
@@ -144,6 +147,7 @@ export default function TestsPage() {
         totalMarks: 1,
         duration: 30,
         isFree: false,
+        isActive: true,
         order: (tests && Array.isArray(tests) ? tests.length : 0) + 1,
         description: '',
         instructions: '',
@@ -324,6 +328,7 @@ export default function TestsPage() {
                   <TableCell sx={{ color: 'white', fontWeight: 600 }}>Duration</TableCell>
                   <TableCell sx={{ color: 'white', fontWeight: 600 }}>Marks</TableCell>
                   <TableCell sx={{ color: 'white', fontWeight: 600 }}>Free</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Status</TableCell>
                   <TableCell align="right" sx={{ color: 'white', fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -351,6 +356,14 @@ export default function TestsPage() {
                           sx={{ fontWeight: 600 }}
                         />
                       </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={test.isActive !== false ? 'Visible' : 'Hidden'}
+                          color={test.isActive !== false ? 'success' : 'default'}
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton 
                           size="small" 
@@ -372,7 +385,7 @@ export default function TestsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Box sx={{ py: 4 }}>
                       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
                         No tests found. Create your first test for this exam.
@@ -478,6 +491,20 @@ export default function TestsPage() {
               }
               label="Free Test"
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.isActive !== undefined ? formData.isActive : true}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label="Visible in App"
+              sx={{ mt: 1 }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: -1, mb: 1 }}>
+              {formData.isActive !== false ? 'Test will be visible to users in the app' : 'Test will be hidden from users in the app'}
+            </Typography>
             <TextField
               label="Description"
               value={formData.description}
