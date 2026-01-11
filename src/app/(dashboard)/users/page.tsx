@@ -257,8 +257,12 @@ export default function UsersPage() {
                   <TableRow key={user._id} sx={{ '&:hover': { backgroundColor: 'action.hover' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                          {user.name.charAt(0).toUpperCase()}
+                        <Avatar 
+                          src={user.profilePicture} 
+                          alt={user.name}
+                          sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
+                        >
+                          {!user.profilePicture && user.name.charAt(0).toUpperCase()}
                         </Avatar>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {user.name}
@@ -370,8 +374,12 @@ export default function UsersPage() {
         >
           <DialogTitle>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'primary.main' }}>
-                {selectedUser?.name.charAt(0).toUpperCase()}
+              <Avatar 
+                src={selectedUser?.profilePicture} 
+                alt={selectedUser?.name}
+                sx={{ width: 56, height: 56, bgcolor: 'primary.main' }}
+              >
+                {!selectedUser?.profilePicture && selectedUser?.name.charAt(0).toUpperCase()}
               </Avatar>
               <Box>
                 <Typography variant="h6">{selectedUser?.name}</Typography>
