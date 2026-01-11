@@ -251,6 +251,12 @@ export default function QuestionsPage() {
         }
       }
       
+      // Handle testId - it might be populated as an object by MongoDB/Mongoose
+      const testIdValue = (questionToUse as any).testId;
+      const extractedTestId = typeof testIdValue === 'object' && testIdValue !== null && '_id' in testIdValue
+        ? testIdValue._id
+        : (typeof testIdValue === 'string' ? testIdValue : questionToUse.testId || '');
+      
       setFormData({
         questionText: questionToUse.questionText || '',
         questionTextHindi: questionToUse.questionTextHindi || '',
@@ -265,7 +271,7 @@ export default function QuestionsPage() {
         solution: solutionValue,
         marks: questionToUse.marks || 1,
         negativeMarks: questionToUse.negativeMarks || 0,
-        testId: typeof questionToUse.testId === 'object' ? questionToUse.testId._id : questionToUse.testId,
+        testId: extractedTestId,
         order: questionToUse.order || 1,
         section: (questionToUse as any).section || 'General',
         reuseEnglishImages: false,

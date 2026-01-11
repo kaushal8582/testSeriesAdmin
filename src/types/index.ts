@@ -189,6 +189,7 @@ export interface CreateQuestionData {
   order: number;
   section?: string;
   reuseEnglishImages?: boolean;
+  reuseEnglishResultImages?: boolean;
 }
 
 export interface BulkQuestionData {
