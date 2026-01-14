@@ -38,6 +38,7 @@ import {
   Add as AddIcon,
   Send as SendIcon,
   Visibility as ViewIcon,
+  Upload as UploadIcon,
 } from '@mui/icons-material';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import {
@@ -48,6 +49,7 @@ import {
 import { userApi } from '@/api/user.api';
 import { categoryApi } from '@/api/category.api';
 import { examApi } from '@/api/exam.api';
+import { testApi } from '@/api/test.api';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -66,6 +68,7 @@ export default function NotificationsPage() {
     title: '',
     body: '',
     image: '',
+    deepLink: '',
     recipientType: 'all',
     recipients: {},
     scheduledFor: undefined,
@@ -75,6 +78,12 @@ export default function NotificationsPage() {
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<any[]>([]);
   const [selectedExams, setSelectedExams] = useState<any[]>([]);
+  const [tests, setTests] = useState<any[]>([]);
+  const [selectedDeepLinkScreen, setSelectedDeepLinkScreen] = useState<string>('');
+  const [deepLinkParams, setDeepLinkParams] = useState<Record<string, string>>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -82,6 +91,14 @@ export default function NotificationsPage() {
     loadCategories();
     loadExams();
   }, []);
+
+  useEffect(() => {
+    if ((selectedDeepLinkScreen === 'TestList' || selectedDeepLinkScreen === 'TestInstruction') && deepLinkParams.examId) {
+      loadTestsForExam(deepLinkParams.examId);
+    } else if (!deepLinkParams.examId) {
+      setTests([]);
+    }
+  }, [selectedDeepLinkScreen, deepLinkParams.examId]);
 
   const loadNotifications = async () => {
     try {
@@ -131,12 +148,37 @@ export default function NotificationsPage() {
         title: notification.title,
         body: notification.body,
         image: notification.image || '',
+        deepLink: notification.deepLink || '',
         recipientType: notification.recipientType,
         recipients: notification.recipients,
         scheduledFor: notification.scheduledFor,
         isRecurring: notification.isRecurring,
         recurringPattern: notification.recurringPattern,
       });
+      
+      // Parse deep link if exists
+      let screen = '';
+      let params: Record<string, string> = {};
+      if (notification.deepLink) {
+        const parts = notification.deepLink.split(':');
+        screen = parts[0];
+        for (let i = 1; i < parts.length; i += 2) {
+          if (parts[i + 1]) {
+            params[parts[i]] = decodeURIComponent(parts[i + 1]);
+          }
+        }
+      }
+      setSelectedDeepLinkScreen(screen);
+      setDeepLinkParams(params);
+      
+      // Set image preview if image exists
+      if (notification.image) {
+        setImagePreview(notification.image);
+      } else {
+        setImagePreview('');
+      }
+      setImageFile(null);
+      
       if (notification.recipientType === 'specific' && notification.recipients.userIds) {
         setSelectedUsers(
           users.filter((u) => notification.recipients.userIds?.includes(u._id))
@@ -152,12 +194,20 @@ export default function NotificationsPage() {
           exams.filter((e) => notification.recipients.examIds?.includes(e._id))
         );
       }
+      
+      // Load tests if TestList or TestInstruction screen is selected
+      if (screen === 'TestList' && params.examId) {
+        loadTestsForExam(params.examId);
+      } else if (screen === 'TestInstruction' && params.examId) {
+        loadTestsForExam(params.examId);
+      }
     } else {
       setEditingNotification(null);
       setFormData({
         title: '',
         body: '',
         image: '',
+        deepLink: '',
         recipientType: 'all',
         recipients: {},
         scheduledFor: undefined,
@@ -167,6 +217,11 @@ export default function NotificationsPage() {
       setSelectedUsers([]);
       setSelectedCategories([]);
       setSelectedExams([]);
+      setSelectedDeepLinkScreen('');
+      setDeepLinkParams({});
+      setTests([]);
+      setImageFile(null);
+      setImagePreview('');
     }
     setOpenDialog(true);
   };
@@ -178,6 +233,7 @@ export default function NotificationsPage() {
       title: '',
       body: '',
       image: '',
+      deepLink: '',
       recipientType: 'all',
       recipients: {},
       scheduledFor: undefined,
@@ -187,6 +243,68 @@ export default function NotificationsPage() {
     setSelectedUsers([]);
     setSelectedCategories([]);
     setSelectedExams([]);
+    setSelectedDeepLinkScreen('');
+    setDeepLinkParams({});
+    setTests([]);
+    setImageFile(null);
+    setImagePreview('');
+  };
+
+  const loadTestsForExam = async (examId: string) => {
+    if (!examId) {
+      setTests([]);
+      return;
+    }
+    try {
+      const response = await testApi.getTests(examId, { limit: 100 });
+      setTests(response.tests || []);
+    } catch (error) {
+      console.error('Failed to load tests:', error);
+      setTests([]);
+    }
+  };
+
+  const handleImageChange = (file: File | null) => {
+    if (file) {
+      setImageFile(file);
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImageFile(null);
+      setImagePreview('');
+      setFormData({ ...formData, image: '' });
+    }
+  };
+
+  const handleImageUpload = async (): Promise<string | null> => {
+    if (!imageFile) {
+      return null;
+    }
+
+    try {
+      setUploadingImage(true);
+      // Convert file to base64 data URL
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          resolve(base64String);
+        };
+        reader.onerror = () => {
+          reject(new Error('Failed to read image file'));
+        };
+        reader.readAsDataURL(imageFile);
+      });
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -206,6 +324,18 @@ export default function NotificationsPage() {
       if (formData.isRecurring && !formData.recurringPattern) {
         setError('Please select a recurring pattern (Daily, Weekly, or Monthly)');
         return;
+      }
+
+      // Upload image if file is selected
+      let imageUrl = formData.image;
+      if (imageFile) {
+        const uploadedUrl = await handleImageUpload();
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        } else {
+          setError('Failed to upload image. Please try again.');
+          return;
+        }
       }
 
       // Prepare recipients based on recipient type
@@ -246,8 +376,11 @@ export default function NotificationsPage() {
       };
 
       // Only include optional fields if they have values
-      if (formData.image && formData.image.trim()) {
-        submitData.image = formData.image.trim();
+      if (imageUrl && imageUrl.trim()) {
+        submitData.image = imageUrl.trim();
+      }
+      if (formData.deepLink && formData.deepLink.trim()) {
+        submitData.deepLink = formData.deepLink.trim();
       }
       if (formData.scheduledFor) {
         submitData.scheduledFor = new Date(formData.scheduledFor).toISOString();
@@ -441,19 +574,18 @@ export default function NotificationsPage() {
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        {notification.status !== 'sent' && (
-                          <IconButton
-                            size="small"
-                            onClick={() => handleSend(notification._id)}
-                            disabled={sending === notification._id}
-                          >
-                            {sending === notification._id ? (
-                              <CircularProgress size={20} />
-                            ) : (
-                              <SendIcon fontSize="small" />
-                            )}
-                          </IconButton>
-                        )}
+                        <IconButton
+                          size="small"
+                          onClick={() => handleSend(notification._id)}
+                          disabled={sending === notification._id}
+                          title="Send Notification"
+                        >
+                          {sending === notification._id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <SendIcon fontSize="small" />
+                          )}
+                        </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => setDeleteConfirm(notification._id)}
@@ -508,13 +640,357 @@ export default function NotificationsPage() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Image URL (Optional)"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Notification Image (Optional)
+                </Typography>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="notification-image-upload"
+                  type="file"
+                  onChange={(e) => handleImageChange(e.target.files?.[0] || null)}
+                  disabled={uploadingImage}
                 />
+                <label htmlFor="notification-image-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<UploadIcon />}
+                    disabled={uploadingImage}
+                    sx={{ mb: 1 }}
+                  >
+                    {uploadingImage ? 'Uploading...' : 'Select Image from Device'}
+                  </Button>
+                </label>
+                {imagePreview && (
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <img
+                      src={imagePreview}
+                      alt="Notification preview"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => {
+                        handleImageChange(null);
+                        setFormData({ ...formData, image: '' });
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      Remove Image
+                    </Button>
+                  </Box>
+                )}
+                {!imagePreview && formData.image && (
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+                      Current Image URL:
+                    </Typography>
+                    <img
+                      src={formData.image}
+                      alt="Current notification image"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                      onError={() => {
+                        // If image fails to load, clear it
+                        setFormData({ ...formData, image: '' });
+                      }}
+                    />
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={formData.image}
+                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                      placeholder="Or enter image URL manually"
+                      sx={{ mt: 1 }}
+                      helperText="You can also enter image URL directly"
+                    />
+                  </Box>
+                )}
+                {!imagePreview && !formData.image && (
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={formData.image}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    placeholder="Or enter image URL manually"
+                    sx={{ mt: 1 }}
+                    helperText="Select image from device or enter image URL"
+                  />
+                )}
               </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Deep Link Screen (Optional)</InputLabel>
+                  <Select
+                    value={selectedDeepLinkScreen}
+                    onChange={(e) => {
+                      const screen = e.target.value;
+                      setSelectedDeepLinkScreen(screen);
+                      // Reset params when screen changes
+                      setDeepLinkParams({});
+                      // Build deep link string
+                      if (screen) {
+                        setFormData({ ...formData, deepLink: screen });
+                      } else {
+                        setFormData({ ...formData, deepLink: '' });
+                      }
+                    }}
+                    label="Deep Link Screen (Optional)"
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    <MenuItem value="Home">Home</MenuItem>
+                    <MenuItem value="Profile">Profile</MenuItem>
+                    <MenuItem value="Categories">Categories</MenuItem>
+                    <MenuItem value="Performance">Performance</MenuItem>
+                    <MenuItem value="QuizRoomHistory">Quiz Room History</MenuItem>
+                    <MenuItem value="Leaderboard">Leaderboard</MenuItem>
+                    <MenuItem value="SubscriptionPlans">Subscription Plans</MenuItem>
+                    <MenuItem value="TransactionHistory">Transaction History</MenuItem>
+                    <MenuItem value="TestAttemptHistory">Test Attempt History</MenuItem>
+                    <MenuItem value="CreateQuizRoom">Create Quiz Room</MenuItem>
+                    <MenuItem value="JoinQuizRoom">Join Quiz Room</MenuItem>
+                    <MenuItem value="ExamList">Exam List</MenuItem>
+                    <MenuItem value="TestList">Test List</MenuItem>
+                    <MenuItem value="TestInstruction">Test Instruction</MenuItem>
+                    <MenuItem value="Result">Result</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Dynamic parameter fields based on selected screen */}
+              {selectedDeepLinkScreen === 'ExamList' && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category (Optional)</InputLabel>
+                    <Select
+                      value={deepLinkParams.category || ''}
+                      onChange={(e) => {
+                        const category = e.target.value;
+                        const newParams = { ...deepLinkParams, category };
+                        setDeepLinkParams(newParams);
+                        const paramString = category ? `:category:${category}` : '';
+                        setFormData({ ...formData, deepLink: `ExamList${paramString}` });
+                      }}
+                      label="Category (Optional)"
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {categories.map((cat) => (
+                        <MenuItem key={cat._id} value={cat.name}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'TestList' && (
+                <>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Exam *</InputLabel>
+                      <Select
+                        value={deepLinkParams.examId || ''}
+                        onChange={(e) => {
+                          const examId = e.target.value;
+                          const newParams = { ...deepLinkParams, examId };
+                          setDeepLinkParams(newParams);
+                          const exam = exams.find((e) => e._id === examId);
+                          const examTitle = exam?.title || '';
+                          setFormData({ 
+                            ...formData, 
+                            deepLink: `TestList:examId:${examId}:examTitle:${encodeURIComponent(examTitle)}` 
+                          });
+                          if (examId) {
+                            loadTestsForExam(examId);
+                          }
+                        }}
+                        label="Exam *"
+                        required
+                      >
+                        <MenuItem value="">Select Exam</MenuItem>
+                        {exams.map((exam) => (
+                          <MenuItem key={exam._id} value={exam._id}>
+                            {exam.title}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </>
+              )}
+
+              {selectedDeepLinkScreen === 'TestInstruction' && (
+                <>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Exam *</InputLabel>
+                      <Select
+                        value={deepLinkParams.examId || ''}
+                        onChange={(e) => {
+                          const examId = e.target.value;
+                          const newParams = { ...deepLinkParams, examId };
+                          delete newParams.testId; // Reset test when exam changes
+                          setDeepLinkParams(newParams);
+                          if (examId) {
+                            loadTestsForExam(examId);
+                          } else {
+                            setTests([]);
+                          }
+                        }}
+                        label="Exam *"
+                        required
+                      >
+                        <MenuItem value="">Select Exam</MenuItem>
+                        {exams.map((exam) => (
+                          <MenuItem key={exam._id} value={exam._id}>
+                            {exam.title}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  {deepLinkParams.examId && (
+                    <Grid item xs={12}>
+                      <FormControl fullWidth>
+                        <InputLabel>Test *</InputLabel>
+                        <Select
+                          value={deepLinkParams.testId || ''}
+                          onChange={(e) => {
+                            const testId = e.target.value;
+                            const newParams = { ...deepLinkParams, testId };
+                            setDeepLinkParams(newParams);
+                            setFormData({ ...formData, deepLink: `TestInstruction:testId:${testId}` });
+                          }}
+                          label="Test *"
+                          required
+                        >
+                          <MenuItem value="">Select Test</MenuItem>
+                          {tests.map((test) => (
+                            <MenuItem key={test._id} value={test._id}>
+                              {test.testName}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  )}
+                </>
+              )}
+
+              {selectedDeepLinkScreen === 'Result' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Attempt ID *"
+                    value={deepLinkParams.attemptId || ''}
+                    onChange={(e) => {
+                      const attemptId = e.target.value;
+                      const newParams = { ...deepLinkParams, attemptId };
+                      setDeepLinkParams(newParams);
+                      setFormData({ ...formData, deepLink: `Result:attemptId:${attemptId}` });
+                    }}
+                    required
+                    helperText="Enter the test attempt ID"
+                  />
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'QuizRoomLobby' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Room Code *"
+                    value={deepLinkParams.roomCode || ''}
+                    onChange={(e) => {
+                      const roomCode = e.target.value;
+                      const newParams = { ...deepLinkParams, roomCode };
+                      setDeepLinkParams(newParams);
+                      setFormData({ ...formData, deepLink: `QuizRoomLobby:roomCode:${roomCode}` });
+                    }}
+                    required
+                    helperText="Enter the quiz room code"
+                  />
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'QuizRoomPlayer' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Room Code *"
+                    value={deepLinkParams.roomCode || ''}
+                    onChange={(e) => {
+                      const roomCode = e.target.value;
+                      const newParams = { ...deepLinkParams, roomCode };
+                      setDeepLinkParams(newParams);
+                      setFormData({ ...formData, deepLink: `QuizRoomPlayer:roomCode:${roomCode}` });
+                    }}
+                    required
+                    helperText="Enter the quiz room code"
+                  />
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'QuizRoomResults' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Room Code *"
+                    value={deepLinkParams.roomCode || ''}
+                    onChange={(e) => {
+                      const roomCode = e.target.value;
+                      const newParams = { ...deepLinkParams, roomCode };
+                      setDeepLinkParams(newParams);
+                      setFormData({ ...formData, deepLink: `QuizRoomResults:roomCode:${roomCode}` });
+                    }}
+                    required
+                    helperText="Enter the quiz room code"
+                  />
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'TransactionHistory' && (
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Type (Optional)</InputLabel>
+                    <Select
+                      value={deepLinkParams.type || ''}
+                      onChange={(e) => {
+                        const type = e.target.value;
+                        const newParams = { ...deepLinkParams, type };
+                        setDeepLinkParams(newParams);
+                        const paramString = type ? `:type:${type}` : '';
+                        setFormData({ ...formData, deepLink: `TransactionHistory${paramString}` });
+                      }}
+                      label="Type (Optional)"
+                    >
+                      <MenuItem value="">All</MenuItem>
+                      <MenuItem value="xp">XP</MenuItem>
+                      <MenuItem value="coins">Coins</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              {selectedDeepLinkScreen === 'Payment' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Plan ID *"
+                    value={deepLinkParams.planId || ''}
+                    onChange={(e) => {
+                      const planId = e.target.value;
+                      const newParams = { ...deepLinkParams, planId };
+                      setDeepLinkParams(newParams);
+                      setFormData({ ...formData, deepLink: `Payment:planId:${planId}` });
+                    }}
+                    required
+                    helperText="Enter the subscription plan ID"
+                  />
+                </Grid>
+              )}
               <Grid item xs={12}>
                 <FormControl fullWidth>
                   <InputLabel>Recipient Type</InputLabel>
@@ -592,7 +1068,7 @@ export default function NotificationsPage() {
                   <Autocomplete
                     multiple
                     options={exams}
-                    getOptionLabel={(option) => option.name}
+                    getOptionLabel={(option) => option.title}
                     value={selectedExams}
                     onChange={(_, newValue) => setSelectedExams(newValue)}
                     renderInput={(params) => (

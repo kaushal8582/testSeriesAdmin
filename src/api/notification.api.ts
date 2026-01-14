@@ -6,6 +6,7 @@ export interface Notification {
   title: string;
   body: string;
   image?: string;
+  deepLink?: string;
   data?: Record<string, any>;
   recipientType: 'all' | 'specific' | 'plan' | 'category' | 'exam';
   recipients: {
@@ -39,6 +40,7 @@ export interface CreateNotificationData {
   title: string;
   body: string;
   image?: string;
+  deepLink?: string;
   data?: Record<string, any>;
   recipientType: 'all' | 'specific' | 'plan' | 'category' | 'exam';
   recipients: {
