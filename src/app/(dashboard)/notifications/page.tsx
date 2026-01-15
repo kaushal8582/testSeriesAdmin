@@ -830,7 +830,7 @@ export default function NotificationsPage() {
                         value={deepLinkParams.examId || ''}
                         onChange={(e) => {
                           const examId = e.target.value;
-                          const newParams = { ...deepLinkParams, examId };
+                          const newParams: Record<string, string> = { ...deepLinkParams, examId };
                           delete newParams.testId; // Reset test when exam changes
                           setDeepLinkParams(newParams);
                           if (examId) {
