@@ -52,6 +52,8 @@ export default function TestsPage() {
     tabId: '',
     totalQuestions: 0,
     totalMarks: 0,
+    correctMark: 1,
+    negativeMark: 0,
     duration: 0,
     isFree: false,
     isActive: true,
@@ -129,6 +131,8 @@ export default function TestsPage() {
         tabId: (test as any).tabId || '',
         totalQuestions: test.totalQuestions,
         totalMarks: test.totalMarks,
+        correctMark: (test as any).correctMark || 1,
+        negativeMark: (test as any).negativeMark || 0,
         duration: test.duration,
         isFree: test.isFree,
         isActive: test.isActive !== undefined ? test.isActive : true,
@@ -145,6 +149,8 @@ export default function TestsPage() {
         tabId: defaultTab?._id || '',
         totalQuestions: 1,
         totalMarks: 1,
+        correctMark: 1,
+        negativeMark: 0,
         duration: 30,
         isFree: false,
         isActive: true,
@@ -465,6 +471,26 @@ export default function TestsPage() {
               onChange={(e) => setFormData({ ...formData, totalMarks: parseInt(e.target.value) })}
               fullWidth
               required
+            />
+            <TextField
+              label="Correct Mark (per question)"
+              type="number"
+              value={formData.correctMark}
+              onChange={(e) => setFormData({ ...formData, correctMark: parseFloat(e.target.value) })}
+              fullWidth
+              required
+              inputProps={{ step: '0.25', min: '0' }}
+              helperText="Marks awarded for each correct answer"
+            />
+            <TextField
+              label="Negative Mark (per question)"
+              type="number"
+              value={formData.negativeMark}
+              onChange={(e) => setFormData({ ...formData, negativeMark: parseFloat(e.target.value) })}
+              fullWidth
+              required
+              inputProps={{ step: '0.25', min: '0' }}
+              helperText="Marks deducted for each wrong answer (e.g., 0.25)"
             />
             <TextField
               label="Duration (minutes)"

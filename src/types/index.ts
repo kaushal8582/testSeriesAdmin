@@ -72,6 +72,8 @@ export interface Test {
   examId: string;
   totalQuestions: number;
   totalMarks: number;
+  correctMark: number;
+  negativeMark: number;
   duration: number;
   isFree: boolean;
   isActive?: boolean;
@@ -93,6 +95,8 @@ export interface CreateTestData {
   tabId?: string;
   totalQuestions: number;
   totalMarks: number;
+  correctMark: number;
+  negativeMark: number;
   duration: number;
   isFree: boolean;
   isActive?: boolean;

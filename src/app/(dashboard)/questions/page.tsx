@@ -372,14 +372,8 @@ export default function QuestionsPage() {
         setError('Please select a correct option');
         return;
       }
-      if (formData.marks < 0) {
-        setError('Marks must be 0 or greater');
-        return;
-      }
-      if (formData.negativeMarks < 0) {
-        setError('Negative marks must be 0 or greater');
-        return;
-      }
+      // Marks validation removed - marks are now set at test level
+      // Keeping these fields for backward compatibility but they won't be used
       
       // Check if we have any image files to upload
       const hasImageFiles = Object.keys(imageFiles).length > 0;
@@ -703,8 +697,8 @@ export default function QuestionsPage() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">
-                          <strong>+{question.marks || 0}</strong> / -{question.negativeMarks || 0}
+                        <Typography variant="body2" color="text.secondary">
+                          <em>Set at test level</em>
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -1031,20 +1025,28 @@ export default function QuestionsPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <Alert severity="info" sx={{ mb: 1 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> Marks are now set at the test level. The marks you set when creating/editing the test will be applied to all questions in that test.
+              </Typography>
+            </Alert>
             <TextField
-              label="Marks"
+              label="Marks (Deprecated - Not Used)"
               type="number"
               value={formData.marks}
               onChange={(e) => setFormData({ ...formData, marks: parseFloat(e.target.value) })}
               fullWidth
-              required
+              disabled
+              helperText="Marks are now set at test level, not per question"
             />
             <TextField
-              label="Negative Marks"
+              label="Negative Marks (Deprecated - Not Used)"
               type="number"
               value={formData.negativeMarks}
               onChange={(e) => setFormData({ ...formData, negativeMarks: parseFloat(e.target.value) })}
               fullWidth
+              disabled
+              helperText="Negative marks are now set at test level, not per question"
             />
             <TextField
               label="Order"
